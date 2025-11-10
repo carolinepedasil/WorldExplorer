@@ -29,6 +29,10 @@ export default function DashboardPage() {
     router.push('/');
   };
 
+  const goToSearch = () => {
+    router.push('/events/search');
+  };
+
   if (!isAuthenticated) {
     return null;
   }
@@ -83,6 +87,15 @@ export default function DashboardPage() {
                 <p className="text-gray-600 dark:text-gray-400">
                   You're now logged in and can start exploring. This is your dashboard where you can manage your profile and activities.
                 </p>
+
+                <div className="mt-6">
+                  <button
+                    onClick={goToSearch}
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Search destinations & events
+                  </button>
+                </div>
               </div>
             </div>
           )}

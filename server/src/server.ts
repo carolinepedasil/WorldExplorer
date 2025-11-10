@@ -1,15 +1,17 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Application } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import passport from 'passport';
-import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import './config/passport';
+import eventsRoutes from './routes/events.routes';
 
-dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +39,7 @@ app.use(passport.session());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/events', eventsRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'OK', message: 'WorldExplorer API is running' });

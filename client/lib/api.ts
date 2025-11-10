@@ -1,4 +1,5 @@
 import apiClient from './api-client';
+import { toSearchParams } from './url';
 
 export interface User {
   id: string;
@@ -72,5 +73,38 @@ export const healthApi = {
   check: async (): Promise<{ status: string; message: string }> => {
     const { data } = await apiClient.get('/health');
     return data;
+  },
+};
+
+export const eventsApi = {
+  search: async (params: Record<string, string | undefined>) => {
+    const normalized: Record<string, string | undefined> = {
+      q: params.q,
+      city: params.city || params['location.address'],
+      page: params.page,
+    };
+    const query = toSearchParams(normalized);
+    const { data } = await apiClient.get(`/events/search?${query.toString()}`);
+    return data as {
+      events: Array<{
+        id: string;
+        name?: { text?: string };
+        description?: { text?: string };
+        start?: { local?: string; utc?: string };
+        url?: string;
+      }>;
+      pagination?: { has_more_items?: boolean };
+    };
+  },
+
+  getById: async (id: string) => {
+    const { data } = await apiClient.get(`/events/${id}`);
+    return data as {
+      id: string;
+      name?: { text?: string };
+      description?: { text?: string };
+      start?: { local?: string; utc?: string };
+      url?: string;
+    };
   },
 };

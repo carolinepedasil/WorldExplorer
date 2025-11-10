@@ -26,8 +26,18 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+    const status = error?.response?.status;
+    const url: string = error?.config?.url || '';
+
+    const isPublic =
+      url.startsWith('/events/') ||
+      url.startsWith('/health') ||
+      url.startsWith('/auth/github') ||
+      url.startsWith('/auth/callback');
+
+    if (status === 401 && !isPublic) {
+      try {
+      } catch (_) {}
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }
