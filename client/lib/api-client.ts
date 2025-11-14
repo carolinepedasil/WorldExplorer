@@ -12,9 +12,11 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -36,9 +38,8 @@ apiClient.interceptors.response.use(
       url.startsWith('/auth/callback');
 
     if (status === 401 && !isPublic) {
-      try {
-      } catch (_) {}
       if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
         window.location.href = '/login';
       }
     }

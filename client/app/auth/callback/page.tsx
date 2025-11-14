@@ -14,6 +14,12 @@ function AuthCallbackContent() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const token = searchParams.get('token');
 
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem('token', token);
+    }
+  }, [token]);
+
   const { data: user, isLoading } = useQuery({
     queryKey: ['currentUser', token],
     queryFn: authApi.getCurrentUser,
