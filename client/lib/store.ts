@@ -16,11 +16,12 @@ interface AuthStore {
   isAuthenticated: boolean;
   setAuth: (user: User, token: string) => void;
   clearAuth: () => void;
+  initializeAuth: () => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       isAuthenticated: false,
@@ -36,10 +37,24 @@ export const useAuthStore = create<AuthStore>()(
         }
         set({ user: null, token: null, isAuthenticated: false });
       },
+      initializeAuth: () => {
+        if (typeof window !== 'undefined') {
+          const storedToken = localStorage.getItem('token');
+          const state = get();
+          if (storedToken && !state.token) {
+            set({ token: storedToken });
+          }
+        }
+      },
     }),
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );

@@ -4,25 +4,33 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/lib/store';
 import { userApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user: authUser, isAuthenticated, clearAuth } = useAuthStore();
+  const { user: authUser, isAuthenticated, clearAuth, token } = useAuthStore();
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
     queryFn: userApi.getProfile,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && isHydrated,
   });
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
+    if (isHydrated && !isAuthenticated && !token) {
+      const storedToken = localStorage.getItem('token');
+      if (!storedToken) {
+        router.push('/login');
+      }
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, token, router, isHydrated]);
 
   const handleLogout = () => {
     clearAuth();
@@ -33,7 +41,7 @@ export default function DashboardPage() {
     router.push('/events/search');
   };
 
-  if (!isAuthenticated) {
+  if (!isHydrated || (!isAuthenticated && !localStorage.getItem('token'))) {
     return null;
   }
 
