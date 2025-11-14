@@ -3,7 +3,8 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toSearchParams } from '@/lib/url';
-import { eventsApi } from '@/lib/api';
+import { eventsApi, shareApi } from '@/lib/api';
+import EventModal from '@/components/EventModal';
 
 type EBEvent = {
   id: string;
@@ -39,6 +40,9 @@ export default function EventSearchPage() {
   const [data, setData] = useState<SearchPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EBEvent | null>(null);
+  const [shareSuccess, setShareSuccess] = useState<string | null>(null);
+  const [itinerary, setItinerary] = useState<string[]>([]);
 
   const doSearch = async () => {
     setLoading(true);
@@ -52,6 +56,14 @@ export default function EventSearchPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const saved = localStorage.getItem('itinerary');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setItinerary(parsed.map((e: any) => e.id));
+    }
+  }, []);
 
   useEffect(() => {
     if (q || city) {
@@ -77,6 +89,51 @@ export default function EventSearchPage() {
     void doSearch();
   };
 
+  const handleShare = async (event: EBEvent) => {
+    try {
+      const { shareUrl } = await shareApi.createEventShare(
+        event.id,
+        event.name?.text || 'Event',
+        event.url || ''
+      );
+      await navigator.clipboard.writeText(shareUrl);
+      setShareSuccess(shareUrl);
+      setTimeout(() => setShareSuccess(null), 3000);
+    } catch (error) {
+      console.error('Error sharing event:', error);
+    }
+  };
+
+  const handleViewDetails = (event: EBEvent) => {
+    if (event.url) {
+      setSelectedEvent(event);
+    }
+  };
+
+  const handleAddToItinerary = (event: EBEvent) => {
+    const saved = localStorage.getItem('itinerary');
+    const current = saved ? JSON.parse(saved) : [];
+    
+    const newEvent = {
+      id: event.id,
+      name: event.name?.text || 'Event',
+      start: event.start?.local || event.start?.utc || new Date().toISOString(),
+      url: event.url || '',
+      imageUrl: event.imageUrl,
+      description: event.description?.text
+    };
+
+    const exists = current.find((e: any) => e.id === event.id);
+    if (!exists) {
+      const updated = [...current, newEvent];
+      localStorage.setItem('itinerary', JSON.stringify(updated));
+      setItinerary(updated.map((e: any) => e.id));
+      alert('Event added to itinerary!');
+    } else {
+      alert('Event already in itinerary');
+    }
+  };
+
   const events: EBEvent[] = data?.events || [];
   const hasNext = Boolean(data?.pagination?.has_more_items);
   const hasPrev = page > 1;
@@ -87,6 +144,12 @@ export default function EventSearchPage() {
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
           Search Destinations & Events
         </h1>
+
+        {shareSuccess && (
+          <div className="mb-4 bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-200 px-4 py-3 rounded">
+            Link copied to clipboard! {shareSuccess}
+          </div>
+        )}
 
         <form onSubmit={onSubmit} className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
           <input
@@ -144,11 +207,25 @@ export default function EventSearchPage() {
                     : 'Date TBD'}
                 </div>
                 <div className="mt-3 flex gap-3">
-                  {ev.url && (
-                    <a href={ev.url} target="_blank" className="text-blue-600 underline" rel="noreferrer">
-                      Open details ↗
-                    </a>
-                  )}
+                  <button
+                    onClick={() => handleViewDetails(ev)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    View Details
+                  </button>
+                  <button
+                    onClick={() => handleShare(ev)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Share
+                  </button>
+                  <button
+                    onClick={() => handleAddToItinerary(ev)}
+                    disabled={itinerary.includes(ev.id)}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {itinerary.includes(ev.id) ? 'In Itinerary' : 'Add to Itinerary'}
+                  </button>
                 </div>
               </div>
             ))}
@@ -181,6 +258,14 @@ export default function EventSearchPage() {
           </div>
         )}
       </div>
+
+      {selectedEvent && (
+        <EventModal
+          eventUrl={selectedEvent.url || ''}
+          eventName={selectedEvent.name?.text || 'Event'}
+          onClose={() => setSelectedEvent(null)}
+        />
+      )}
     </div>
   );
 }

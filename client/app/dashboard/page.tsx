@@ -41,6 +41,14 @@ export default function DashboardPage() {
     router.push('/events/search');
   };
 
+  const goToItinerary = () => {
+    router.push('/itinerary');
+  };
+
+  const goToManageLinks = () => {
+    router.push('/manage-links');
+  };
+
   if (!isHydrated || (!isAuthenticated && !localStorage.getItem('token'))) {
     return null;
   }
@@ -96,12 +104,24 @@ export default function DashboardPage() {
                   You're now logged in and can start exploring. This is your dashboard where you can manage your profile and activities.
                 </p>
 
-                <div className="mt-6">
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button
                     onClick={goToSearch}
                     className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    Search destinations & events
+                    Search Events
+                  </button>
+                  <button
+                    onClick={goToItinerary}
+                    className="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    My Itinerary
+                  </button>
+                  <button
+                    onClick={goToManageLinks}
+                    className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Manage Shared Links
                   </button>
                 </div>
               </div>

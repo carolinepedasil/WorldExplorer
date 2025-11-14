@@ -92,6 +92,7 @@ export const eventsApi = {
         description?: { text?: string };
         start?: { local?: string; utc?: string };
         url?: string;
+        imageUrl?: string;
       }>;
       pagination?: { has_more_items?: boolean };
     };
@@ -106,5 +107,41 @@ export const eventsApi = {
       start?: { local?: string; utc?: string };
       url?: string;
     };
+  },
+};
+
+export const shareApi = {
+  createEventShare: async (eventId: string, eventName: string, eventUrl: string) => {
+    const { data } = await apiClient.post('/share/event', { eventId, eventName, eventUrl });
+    return data as { token: string; shareUrl: string };
+  },
+
+  createItineraryShare: async (events: any[]) => {
+    const { data } = await apiClient.post('/share/itinerary', { events });
+    return data as { token: string; shareUrl: string };
+  },
+
+  getSharedLink: async (token: string) => {
+    const { data } = await apiClient.get(`/share/${token}`);
+    return data;
+  },
+
+  getUserLinks: async () => {
+    const { data } = await apiClient.get('/share/user/links');
+    return data;
+  },
+
+  revokeLink: async (id: string) => {
+    const { data } = await apiClient.delete(`/share/${id}`);
+    return data;
+  },
+};
+
+export const calendarApi = {
+  exportToICS: async (events: any[]) => {
+    const response = await apiClient.post('/calendar/export', { events }, {
+      responseType: 'blob',
+    });
+    return response.data;
   },
 };

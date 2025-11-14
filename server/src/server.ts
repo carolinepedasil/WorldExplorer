@@ -11,6 +11,8 @@ import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import './config/passport';
 import eventsRoutes from './routes/events.routes';
+import shareRoutes from './routes/share.routes';
+import calendarRoutes from './routes/calendar.routes';
 
 
 const app: Application = express();
@@ -40,6 +42,8 @@ app.use(passport.session());
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/share', shareRoutes);
+app.use('/api/calendar', calendarRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'OK', message: 'WorldExplorer API is running' });
