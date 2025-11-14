@@ -99,14 +99,18 @@ export default function EventSearchPage() {
       await navigator.clipboard.writeText(shareUrl);
       setShareSuccess(shareUrl);
       setTimeout(() => setShareSuccess(null), 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sharing event:', error);
+      const errorMsg = error?.response?.data?.message || 'Failed to create share link. Please log in.';
+      alert(errorMsg);
     }
   };
 
   const handleViewDetails = (event: EBEvent) => {
     if (event.url) {
       setSelectedEvent(event);
+    } else {
+      alert('No event details URL available');
     }
   };
 
@@ -206,23 +210,25 @@ export default function EventSearchPage() {
                     ? new Date(ev.start.utc).toLocaleString()
                     : 'Date TBD'}
                 </div>
-                <div className="mt-3 flex gap-3">
-                  <button
-                    onClick={() => handleViewDetails(ev)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    View Details
-                  </button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {ev.url && (
+                    <button
+                      onClick={() => handleViewDetails(ev)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      View Details
+                    </button>
+                  )}
                   <button
                     onClick={() => handleShare(ev)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
                   >
                     Share
                   </button>
                   <button
                     onClick={() => handleAddToItinerary(ev)}
                     disabled={itinerary.includes(ev.id)}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                   >
                     {itinerary.includes(ev.id) ? 'In Itinerary' : 'Add to Itinerary'}
                   </button>

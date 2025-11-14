@@ -35,7 +35,8 @@ apiClient.interceptors.response.use(
       url.startsWith('/events/') ||
       url.startsWith('/health') ||
       url.startsWith('/auth/github') ||
-      url.startsWith('/auth/callback');
+      url.startsWith('/auth/callback') ||
+      (url.startsWith('/share/') && !url.includes('/user/links'));
 
     if (status === 401 && !isPublic) {
       if (typeof window !== 'undefined') {
