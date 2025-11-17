@@ -49,6 +49,10 @@ export default function DashboardPage() {
     router.push('/manage-links');
   };
 
+  const goToCountries = () => {
+    router.push('/countries');
+  };
+
   if (!isHydrated || (!isAuthenticated && !localStorage.getItem('token'))) {
     return null;
   }
@@ -104,7 +108,13 @@ export default function DashboardPage() {
                   You're now logged in and can start exploring. This is your dashboard where you can manage your profile and activities.
                 </p>
 
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <button
+                    onClick={goToCountries}
+                    className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    Explore Countries
+                  </button>
                   <button
                     onClick={goToSearch}
                     className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

@@ -14,7 +14,7 @@ import eventsRoutes from './routes/events.routes';
 import shareRoutes from './routes/share.routes';
 import calendarRoutes from './routes/calendar.routes';
 import itineraryRoutes from './routes/itinerary.routes';
-
+import countriesRoutes from './routes/countries.routes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
@@ -45,6 +45,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/share', shareRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/countries', countriesRoutes);
 app.use('/api/itineraries', itineraryRoutes);
 
 app.get('/api/health', (_req, res) => {
