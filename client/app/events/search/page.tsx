@@ -3,7 +3,9 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toSearchParams } from '@/lib/url';
-import { eventsApi, shareApi } from '@/lib/api';
+import { eventsApi, shareApi, itineraryApi, type Event } from '@/lib/api';
+import { useAuthStore } from '@/lib/store';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import EventModal from '@/components/EventModal';
 
 type EBEvent = {
@@ -23,6 +25,8 @@ type SearchPayload = {
 export default function EventSearchPage() {
   const router = useRouter();
   const sp = useSearchParams();
+  const { isAuthenticated } = useAuthStore();
+  const queryClient = useQueryClient();
 
   const [q, setQ] = useState(sp.get('q') || '');
   const [city, setCity] = useState(sp.get('city') || sp.get('location.address') || '');
@@ -42,7 +46,34 @@ export default function EventSearchPage() {
   const [err, setErr] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EBEvent | null>(null);
   const [shareSuccess, setShareSuccess] = useState<string | null>(null);
-  const [itinerary, setItinerary] = useState<string[]>([]);
+
+  // Fetch user's itineraries to check which events are already added
+  const { data: itineraries = [] } = useQuery({
+    queryKey: ['itineraries'],
+    queryFn: itineraryApi.getAll,
+    enabled: isAuthenticated,
+  });
+
+  const currentItinerary = itineraries[0] || null;
+  const itineraryEventIds = currentItinerary?.events.map(e => e.id) || [];
+
+  // Mutation to add event to itinerary
+  const addEventMutation = useMutation({
+    mutationFn: async ({ itineraryId, event }: { itineraryId: string; event: Event }) => {
+      return await itineraryApi.addEvent(itineraryId, event);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['itineraries'] });
+    },
+  });
+
+  // Mutation to create itinerary if none exists
+  const createItineraryMutation = useMutation({
+    mutationFn: itineraryApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['itineraries'] });
+    },
+  });
 
   const doSearch = async () => {
     setLoading(true);
@@ -57,13 +88,6 @@ export default function EventSearchPage() {
     }
   };
 
-  useEffect(() => {
-    const saved = localStorage.getItem('itinerary');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setItinerary(parsed.map((e: any) => e.id));
-    }
-  }, []);
 
   useEffect(() => {
     if (q || city) {
@@ -114,27 +138,42 @@ export default function EventSearchPage() {
     }
   };
 
-  const handleAddToItinerary = (event: EBEvent) => {
-    const saved = localStorage.getItem('itinerary');
-    const current = saved ? JSON.parse(saved) : [];
-    
-    const newEvent = {
+  const handleAddToItinerary = async (event: EBEvent) => {
+    if (!isAuthenticated) {
+      alert('Please log in to add events to your itinerary');
+      router.push('/login');
+      return;
+    }
+
+    const newEvent: Event = {
       id: event.id,
       name: event.name?.text || 'Event',
-      start: event.start?.local || event.start?.utc || new Date().toISOString(),
+      date: event.start?.local || event.start?.utc || new Date().toISOString(),
       url: event.url || '',
       imageUrl: event.imageUrl,
-      description: event.description?.text
+      description: event.description?.text,
     };
 
-    const exists = current.find((e: any) => e.id === event.id);
-    if (!exists) {
-      const updated = [...current, newEvent];
-      localStorage.setItem('itinerary', JSON.stringify(updated));
-      setItinerary(updated.map((e: any) => e.id));
-      alert('Event added to itinerary!');
-    } else {
-      alert('Event already in itinerary');
+    try {
+      // If no itinerary exists, create one first
+      if (!currentItinerary) {
+        await createItineraryMutation.mutateAsync({
+          name: 'My Itinerary',
+          events: [newEvent],
+        });
+        alert('Itinerary created and event added!');
+      } else {
+        // Add event to existing itinerary
+        await addEventMutation.mutateAsync({
+          itineraryId: currentItinerary._id,
+          event: newEvent,
+        });
+        alert('Event added to itinerary!');
+      }
+    } catch (error: any) {
+      console.error('Error adding event to itinerary:', error);
+      const errorMsg = error?.response?.data?.message || 'Failed to add event';
+      alert(errorMsg);
     }
   };
 
@@ -227,10 +266,14 @@ export default function EventSearchPage() {
                   </button>
                   <button
                     onClick={() => handleAddToItinerary(ev)}
-                    disabled={itinerary.includes(ev.id)}
+                    disabled={itineraryEventIds.includes(ev.id) || addEventMutation.isPending || createItineraryMutation.isPending}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                   >
-                    {itinerary.includes(ev.id) ? 'In Itinerary' : 'Add to Itinerary'}
+                    {addEventMutation.isPending || createItineraryMutation.isPending
+                      ? 'Adding...'
+                      : itineraryEventIds.includes(ev.id)
+                      ? 'In Itinerary'
+                      : 'Add to Itinerary'}
                   </button>
                 </div>
               </div>

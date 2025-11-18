@@ -145,3 +145,91 @@ export const calendarApi = {
     return response.data;
   },
 };
+
+export interface Event {
+  id: string;
+  name: string;
+  date?: string;
+  time?: string;
+  venue?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  description?: string;
+  imageUrl?: string;
+  url?: string;
+  priceRange?: {
+    min?: number;
+    max?: number;
+    currency?: string;
+  };
+}
+
+export interface Itinerary {
+  _id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  events: Event[];
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateItineraryRequest {
+  name?: string;
+  description?: string;
+  events?: Event[];
+  isPublic?: boolean;
+}
+
+export interface UpdateItineraryRequest {
+  name?: string;
+  description?: string;
+  events?: Event[];
+  isPublic?: boolean;
+}
+
+export const itineraryApi = {
+  // Get all itineraries for the current user
+  getAll: async (): Promise<Itinerary[]> => {
+    const { data } = await apiClient.get('/itineraries');
+    return data;
+  },
+
+  // Get a specific itinerary by ID
+  getById: async (id: string): Promise<Itinerary> => {
+    const { data } = await apiClient.get(`/itineraries/${id}`);
+    return data;
+  },
+
+  // Create a new itinerary
+  create: async (itinerary: CreateItineraryRequest): Promise<Itinerary> => {
+    const { data } = await apiClient.post('/itineraries', itinerary);
+    return data;
+  },
+
+  // Update an existing itinerary
+  update: async (id: string, itinerary: UpdateItineraryRequest): Promise<Itinerary> => {
+    const { data } = await apiClient.put(`/itineraries/${id}`, itinerary);
+    return data;
+  },
+
+  // Delete an itinerary
+  delete: async (id: string): Promise<{ message: string }> => {
+    const { data } = await apiClient.delete(`/itineraries/${id}`);
+    return data;
+  },
+
+  // Add an event to an itinerary
+  addEvent: async (id: string, event: Event): Promise<Itinerary> => {
+    const { data } = await apiClient.post(`/itineraries/${id}/events`, event);
+    return data;
+  },
+
+  // Remove an event from an itinerary
+  removeEvent: async (id: string, eventId: string): Promise<Itinerary> => {
+    const { data } = await apiClient.delete(`/itineraries/${id}/events/${eventId}`);
+    return data;
+  },
+};
