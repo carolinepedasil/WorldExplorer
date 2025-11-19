@@ -82,6 +82,9 @@ export const eventsApi = {
       q: params.q,
       city: params.city || params['location.address'],
       page: params.page,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      segmentName: params.segmentName,
     };
     const query = toSearchParams(normalized);
     const { data } = await apiClient.get(`/events/search?${query.toString()}`);
@@ -116,7 +119,7 @@ export const shareApi = {
     return data as { token: string; shareUrl: string };
   },
 
-  createItineraryShare: async (events: any[]) => {
+  createItineraryShare: async (events: Event[]) => {
     const { data } = await apiClient.post('/share/itinerary', { events });
     return data as { token: string; shareUrl: string };
   },
@@ -138,7 +141,7 @@ export const shareApi = {
 };
 
 export const calendarApi = {
-  exportToICS: async (events: any[]) => {
+  exportToICS: async (events: Event[]) => {
     const response = await apiClient.post('/calendar/export', { events }, {
       responseType: 'blob',
     });

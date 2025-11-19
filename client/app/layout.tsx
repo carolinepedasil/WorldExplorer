@@ -3,8 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/components/providers/QueryProvider";
 import AuthProvider from "@/components/providers/AuthProvider";
+import AppHeader from "@/components/AppHeader";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const geistSans = Geist({
@@ -34,7 +35,8 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AuthProvider>
-            {children}
+            <AppHeader />
+            <main>{children}</main>
           </AuthProvider>
         </QueryProvider>
       </body>

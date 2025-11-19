@@ -32,13 +32,20 @@ export default function EventSearchPage() {
   const [city, setCity] = useState(sp.get('city') || sp.get('location.address') || '');
   const [page, setPage] = useState(Number(sp.get('page') || 1));
 
+  const [startDate, setStartDate] = useState(sp.get('startDate') || '');
+  const [endDate, setEndDate] = useState(sp.get('endDate') || '');
+  const [segment, setSegment] = useState(sp.get('segmentName') || '');
+
   const params = useMemo(
     () => ({
       q: q || undefined,
       city: city || undefined,
       page: String(page),
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      segmentName: segment || undefined,
     }),
-    [q, city, page]
+    [q, city, page, startDate, endDate, segment]
   );
 
   const [data, setData] = useState<SearchPayload | null>(null);
@@ -90,7 +97,7 @@ export default function EventSearchPage() {
 
 
   useEffect(() => {
-    if (q || city) {
+    if (q || city || startDate || endDate || segment) {
       void doSearch();
     } else {
       setData(null);
@@ -98,6 +105,9 @@ export default function EventSearchPage() {
     const qs = toSearchParams({
       q: q || undefined,
       city: city || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      segmentName: segment || undefined,
       page: page > 1 ? String(page) : undefined,
     });
     const url = qs.toString() ? `/events/search?${qs.toString()}` : '/events/search';
@@ -105,7 +115,7 @@ export default function EventSearchPage() {
       router.replace(url);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, city, page]);
+  }, [q, city, page, startDate, endDate, segment]);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,9 +133,11 @@ export default function EventSearchPage() {
       await navigator.clipboard.writeText(shareUrl);
       setShareSuccess(shareUrl);
       setTimeout(() => setShareSuccess(null), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error sharing event:', error);
-      const errorMsg = error?.response?.data?.message || 'Failed to create share link. Please log in.';
+      const apiError = error as { response?: { data?: { message?: string } } };
+      const errorMsg =
+        apiError.response?.data?.message || 'Failed to create share link. Please log in.';
       alert(errorMsg);
     }
   };
@@ -170,9 +182,10 @@ export default function EventSearchPage() {
         });
         alert('Event added to itinerary!');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding event to itinerary:', error);
-      const errorMsg = error?.response?.data?.message || 'Failed to add event';
+      const apiError = error as { response?: { data?: { message?: string } } };
+      const errorMsg = apiError.response?.data?.message || 'Failed to add event';
       alert(errorMsg);
     }
   };
@@ -194,7 +207,11 @@ export default function EventSearchPage() {
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+        <form
+          onSubmit={onSubmit}
+          className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 space-y-3 mb-6"
+        >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <input
             className="border rounded-lg px-3 py-2 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
             placeholder="Keyword (e.g., festival)"
@@ -207,13 +224,40 @@ export default function EventSearchPage() {
             value={city}
             onChange={(e) => setCity(e.target.value)}
           />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input
+            type="date"
+            className="border rounded-lg px-3 py-2 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+          <input
+            type="date"
+            className="border rounded-lg px-3 py-2 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <select
+            className="border rounded-lg px-3 py-2 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+            value={segment}
+            onChange={(e) => setSegment(e.target.value)}
+          >
+            <option value="">All categories</option>
+            <option value="Music">Music</option>
+            <option value="Sports">Sports</option>
+            <option value="Arts & Theatre">Arts & Theatre</option>
+          </select>
           <button
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             type="submit"
           >
             Search
           </button>
-        </form>
+        </div>
+      </form>
 
         {loading && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">

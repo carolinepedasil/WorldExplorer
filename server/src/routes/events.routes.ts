@@ -20,7 +20,15 @@ function toIsoOrUndefined(d?: string) {
 router.get('/search', async (req: Request, res: Response) => {
   try {
     const keyword = (req.query.q as string) || undefined;
-    const city = (req.query.city as string) || (req.query['location.address'] as string) || undefined;
+    const city =
+      (req.query.city as string) ||
+      (req.query['location.address'] as string) ||
+      undefined;
+
+    const startDate = (req.query.startDate as string) || undefined;
+    const endDate = (req.query.endDate as string) || undefined;
+    const segmentName = (req.query.segmentName as string) || undefined;
+
     const page = parseInt((req.query.page as string) || '1', 10);
     const size = 12;
 
@@ -32,6 +40,15 @@ router.get('/search', async (req: Request, res: Response) => {
     };
     if (keyword) params.keyword = keyword;
     if (city) params.city = city;
+    if (startDate) {
+      params.startDateTime = `${startDate}T00:00:00Z`;
+    }
+    if (endDate) {
+      params.endDateTime = `${endDate}T23:59:59Z`;
+    }
+    if (segmentName) {
+      params.segmentName = segmentName;
+    }
 
     const { data } = await axios.get(`${TM_BASE}/events.json`, { params });
 
