@@ -11,6 +11,7 @@ export default function ItineraryPage() {
   const { isAuthenticated } = useAuthStore();
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [removingEventId, setRemovingEventId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch all itineraries for the user
@@ -37,6 +38,10 @@ export default function ItineraryPage() {
       itineraryApi.removeEvent(itineraryId, eventId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['itineraries'] });
+      setRemovingEventId(null);
+    },
+    onError: () => {
+      setRemovingEventId(null);
     },
   });
 
@@ -116,6 +121,7 @@ export default function ItineraryPage() {
   const handleRemoveEvent = async (eventId: string) => {
     if (!currentItinerary) return;
 
+    setRemovingEventId(eventId);
     try {
       await removeEventMutation.mutateAsync({
         itineraryId: currentItinerary._id,
@@ -124,6 +130,7 @@ export default function ItineraryPage() {
     } catch (error) {
       console.error('Error removing event:', error);
       alert('Failed to remove event');
+      setRemovingEventId(null);
     }
   };
 
@@ -244,10 +251,10 @@ export default function ItineraryPage() {
                   )}
                   <button
                     onClick={() => handleRemoveEvent(ev.id)}
-                    disabled={removeEventMutation.isPending}
+                    disabled={removingEventId === ev.id}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                   >
-                    {removeEventMutation.isPending ? 'Removing...' : 'Remove'}
+                    {removingEventId === ev.id ? 'Removing...' : 'Remove'}
                   </button>
                 </div>
               </div>
