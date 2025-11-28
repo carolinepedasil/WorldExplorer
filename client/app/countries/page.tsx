@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, MouseEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { countriesApi, type Country } from '@/lib/countries-api';
@@ -34,21 +34,26 @@ export default function CountriesPage() {
     void refetch();
   };
 
-  const handleViewEvents = (country: Country) => {
+  const handleViewEvents = (e: MouseEvent, country: Country) => {
+    e.stopPropagation();
     const q = country.name.toLowerCase();
     router.push(`/events/search?q=${encodeURIComponent(q)}`);
+  };
+
+  const handleViewDetails = (country: Country) => {
+    router.push(`/countries/${country.code}`);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
-            Browse Countries
+        <header className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Explore Countries
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Explore countries around the world and jump straight to local events
-            for your next destination.
+          <p className="text-gray-700 dark:text-gray-300 mt-2">
+            Search for countries around the world and discover events for your
+            next trip.
           </p>
         </header>
 
@@ -60,9 +65,8 @@ export default function CountriesPage() {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by country name, code, region, or capital (e.g. France, FR, Europe)..."
-            className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 
-                       bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
+            placeholder="Search by country name, code, region, or capital"
+            className="flex-1 px-4 py-2 rounded-lg border border-gray-300 shadow-sm 
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <div className="flex gap-2">
@@ -84,70 +88,82 @@ export default function CountriesPage() {
         </form>
 
         {isLoading && (
-          <div className="text-center text-gray-700 dark:text-gray-300">
-            Loading countries...
+          <div className="flex items-center justify-center py-16">
+            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
         {isError && (
-          <div className="text-center text-red-600 dark:text-red-400">
-            Failed to load countries. Please try again later.
+          <div className="bg-red-100 text-red-800 px-4 py-3 rounded-lg">
+            Failed to load countries. Please try again.
           </div>
         )}
 
         {!isLoading && !isError && countries && countries.length === 0 && (
-          <div className="text-center text-gray-600 dark:text-gray-400">
-            No countries found for this search.
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+            <p className="text-gray-700 dark:text-gray-300">
+              No countries found. Try a different search term.
+            </p>
           </div>
         )}
 
         {!isLoading && !isError && countries && countries.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {countries.map((country) => (
               <article
                 key={country.code}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 flex flex-col"
+                onClick={() => handleViewDetails(country)}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5 flex flex-col justify-between cursor-pointer hover:shadow-lg transition-shadow"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  {country.flagUrl && (
-                    <img
-                      src={country.flagUrl}
-                      alt={`${country.name} flag`}
-                      className="w-10 h-7 object-cover rounded border border-gray-200 dark:border-gray-700"
-                      loading="lazy"
-                    />
-                  )}
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                       {country.name}
                     </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {country.code}
-                      {country.region ? ` • ${country.region}` : ''}
-                    </p>
+                    {country.flagUrl && (
+                      <img
+                        src={country.flagUrl}
+                        alt={`${country.name} flag`}
+                        className="w-10 h-6 object-cover rounded-sm border border-gray-200 dark:border-gray-700"
+                      />
+                    )}
                   </div>
-                </div>
-
-                {country.capital && (
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
-                    <span className="font-semibold">Capital:</span>{' '}
-                    {country.capital}
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Code: <span className="font-mono">{country.code}</span>
                   </p>
-                )}
-
-                {typeof country.population === 'number' &&
-                  country.population > 0 && (
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      <span className="font-semibold">Population:</span>{' '}
-                      {country.population.toLocaleString()}
+                  {country.region && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Region: {country.region}
                     </p>
                   )}
+                  {country.capital && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Capital: {country.capital}
+                    </p>
+                  )}
+                  {country.population && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Population:{' '}
+                      {country.population.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </p>
+                  )}
+                </div>
 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => handleViewEvents(country)}
-                    className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm 
+                    onClick={() => handleViewDetails(country)}
+                    className="flex-1 px-4 py-2 rounded-lg bg-gray-100 text-gray-800 text-sm 
+                               hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    View Details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleViewEvents(e, country)}
+                    className="flex-1 px-4 py-2 rounded-lg bg-purple-600 text-white text-sm 
                                hover:bg-purple-700 transition-colors"
                   >
                     View Events in {country.name}

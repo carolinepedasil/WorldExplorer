@@ -11,6 +11,13 @@ export default function ItineraryPage() {
   const { isAuthenticated } = useAuthStore();
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [removingEventId, setRemovingEventId] = useState<string | null>(null);
+  const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
+  const [showNewItineraryModal, setShowNewItineraryModal] = useState(false);
+  const [newItineraryName, setNewItineraryName] = useState('');
+  const [newItineraryDescription, setNewItineraryDescription] = useState('');
+  const [editingItineraryId, setEditingItineraryId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch all itineraries for the user
@@ -20,14 +27,57 @@ export default function ItineraryPage() {
     enabled: isAuthenticated,
   });
 
-  // Get the first itinerary (or create one if none exists)
-  const currentItinerary = itineraries[0] || null;
+  // Select first itinerary by default or the one from localStorage
+  useEffect(() => {
+    if (itineraries.length > 0 && !selectedItineraryId) {
+      const savedId = localStorage.getItem('selectedItineraryId');
+      const itineraryExists = itineraries.find(it => it._id === savedId);
+      if (savedId && itineraryExists) {
+        setSelectedItineraryId(savedId);
+      } else {
+        setSelectedItineraryId(itineraries[0]._id);
+      }
+    }
+  }, [itineraries, selectedItineraryId]);
+
+  // Save selected itinerary to localStorage
+  useEffect(() => {
+    if (selectedItineraryId) {
+      localStorage.setItem('selectedItineraryId', selectedItineraryId);
+    }
+  }, [selectedItineraryId]);
+
+  const currentItinerary = itineraries.find(it => it._id === selectedItineraryId) || null;
 
   // Create itinerary mutation
   const createItineraryMutation = useMutation({
     mutationFn: itineraryApi.create,
+    onSuccess: (newItinerary) => {
+      queryClient.invalidateQueries({ queryKey: ['itineraries'] });
+      setSelectedItineraryId(newItinerary._id);
+      setShowNewItineraryModal(false);
+      setNewItineraryName('');
+      setNewItineraryDescription('');
+    },
+  });
+
+  // Update itinerary mutation
+  const updateItineraryMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      itineraryApi.update(id, { name }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['itineraries'] });
+      setEditingItineraryId(null);
+      setEditName('');
+    },
+  });
+
+  // Delete itinerary mutation
+  const deleteItineraryMutation = useMutation({
+    mutationFn: itineraryApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['itineraries'] });
+      setSelectedItineraryId(null);
     },
   });
 
@@ -37,6 +87,10 @@ export default function ItineraryPage() {
       itineraryApi.removeEvent(itineraryId, eventId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['itineraries'] });
+      setRemovingEventId(null);
+    },
+    onError: () => {
+      setRemovingEventId(null);
     },
   });
 
@@ -77,6 +131,51 @@ export default function ItineraryPage() {
     migrateFromLocalStorage();
   }, [isAuthenticated, itineraries.length]);
 
+  const handleCreateItinerary = async () => {
+    if (!newItineraryName.trim()) {
+      alert('Please enter a name for your itinerary');
+      return;
+    }
+
+    try {
+      await createItineraryMutation.mutateAsync({
+        name: newItineraryName,
+        description: newItineraryDescription,
+        events: [],
+      });
+    } catch (error) {
+      console.error('Error creating itinerary:', error);
+      alert('Failed to create itinerary');
+    }
+  };
+
+  const handleUpdateItineraryName = async (id: string) => {
+    if (!editName.trim()) {
+      alert('Please enter a name');
+      return;
+    }
+
+    try {
+      await updateItineraryMutation.mutateAsync({ id, name: editName });
+    } catch (error) {
+      console.error('Error updating itinerary:', error);
+      alert('Failed to update itinerary name');
+    }
+  };
+
+  const handleDeleteItinerary = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this itinerary? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteItineraryMutation.mutateAsync(id);
+    } catch (error) {
+      console.error('Error deleting itinerary:', error);
+      alert('Failed to delete itinerary');
+    }
+  };
+
   const handleShareItinerary = async () => {
     if (!currentItinerary) return;
 
@@ -100,7 +199,7 @@ export default function ItineraryPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'itinerary.ics';
+      a.download = `${currentItinerary.name}.ics`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -116,6 +215,7 @@ export default function ItineraryPage() {
   const handleRemoveEvent = async (eventId: string) => {
     if (!currentItinerary) return;
 
+    setRemovingEventId(eventId);
     try {
       await removeEventMutation.mutateAsync({
         itineraryId: currentItinerary._id,
@@ -124,6 +224,7 @@ export default function ItineraryPage() {
     } catch (error) {
       console.error('Error removing event:', error);
       alert('Failed to remove event');
+      setRemovingEventId(null);
     }
   };
 
@@ -135,7 +236,7 @@ export default function ItineraryPage() {
             Please Log In
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            You need to be logged in to view your itinerary
+            You need to be logged in to view your itineraries
           </p>
           <button
             onClick={() => router.push('/login')}
@@ -151,7 +252,7 @@ export default function ItineraryPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-gray-800 dark:text-white text-xl">Loading your itinerary...</div>
+        <div className="text-gray-800 dark:text-white text-xl">Loading your itineraries...</div>
       </div>
     );
   }
@@ -161,27 +262,114 @@ export default function ItineraryPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
-            {currentItinerary?.name || 'My Itinerary'}
-          </h1>
-          <div className="flex gap-3">
+        {/* Header with Itinerary Selector */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">My Itineraries</h1>
             <button
-              onClick={handleShareItinerary}
-              disabled={events.length === 0}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setShowNewItineraryModal(true)}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
-              Share Itinerary
-            </button>
-            <button
-              onClick={handleExportICS}
-              disabled={events.length === 0 || exporting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {exporting ? 'Exporting...' : 'Export to Calendar'}
+              + New Itinerary
             </button>
           </div>
+
+          {/* Itinerary Tabs */}
+          {itineraries.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {itineraries.map((itinerary) => (
+                <div key={itinerary._id} className="flex-shrink-0">
+                  <button
+                    onClick={() => setSelectedItineraryId(itinerary._id)}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      selectedItineraryId === itinerary._id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {itinerary.name} ({itinerary.events.length})
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Current Itinerary Actions */}
+        {currentItinerary && (
+          <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                {editingItineraryId === currentItinerary._id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="px-3 py-1 border rounded dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+                      placeholder="Itinerary name"
+                    />
+                    <button
+                      onClick={() => handleUpdateItineraryName(currentItinerary._id)}
+                      className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingItineraryId(null);
+                        setEditName('');
+                      }}
+                      className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+                      {currentItinerary.name}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setEditingItineraryId(currentItinerary._id);
+                        setEditName(currentItinerary.name);
+                      }}
+                      className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                    >
+                      Edit Name
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={handleShareItinerary}
+                  disabled={events.length === 0}
+                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Share
+                </button>
+                <button
+                  onClick={handleExportICS}
+                  disabled={events.length === 0 || exporting}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {exporting ? 'Exporting...' : 'Export'}
+                </button>
+                <button
+                  onClick={() => handleDeleteItinerary(currentItinerary._id)}
+                  disabled={itineraries.length === 1}
+                  className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={itineraries.length === 1 ? 'Cannot delete your only itinerary' : 'Delete this itinerary'}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {shareUrl && (
           <div className="mb-4 bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-200 px-4 py-3 rounded">
@@ -189,9 +377,20 @@ export default function ItineraryPage() {
           </div>
         )}
 
-        {events.length === 0 ? (
+        {/* Events Grid */}
+        {!currentItinerary && itineraries.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">Your itinerary is empty</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">You don&apos;t have any itineraries yet</p>
+            <button
+              onClick={() => setShowNewItineraryModal(true)}
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Create Your First Itinerary
+            </button>
+          </div>
+        ) : events.length === 0 ? (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">This itinerary is empty</p>
             <button
               onClick={() => router.push('/events/search')}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -244,10 +443,10 @@ export default function ItineraryPage() {
                   )}
                   <button
                     onClick={() => handleRemoveEvent(ev.id)}
-                    disabled={removeEventMutation.isPending}
+                    disabled={removingEventId === ev.id}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                   >
-                    {removeEventMutation.isPending ? 'Removing...' : 'Remove'}
+                    {removingEventId === ev.id ? 'Removing...' : 'Remove'}
                   </button>
                 </div>
               </div>
@@ -255,6 +454,62 @@ export default function ItineraryPage() {
           </div>
         )}
       </div>
+
+      {/* New Itinerary Modal */}
+      {showNewItineraryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
+              Create New Itinerary
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Itinerary Name *
+                </label>
+                <input
+                  type="text"
+                  value={newItineraryName}
+                  onChange={(e) => setNewItineraryName(e.target.value)}
+                  placeholder="e.g., France Trip, New York Weekend"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={newItineraryDescription}
+                  onChange={(e) => setNewItineraryDescription(e.target.value)}
+                  placeholder="Add a description for your itinerary..."
+                  rows={3}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCreateItinerary}
+                  disabled={createItineraryMutation.isPending}
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                >
+                  {createItineraryMutation.isPending ? 'Creating...' : 'Create'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowNewItineraryModal(false);
+                    setNewItineraryName('');
+                    setNewItineraryDescription('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

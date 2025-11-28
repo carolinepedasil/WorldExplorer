@@ -53,6 +53,7 @@ export default function EventSearchPage() {
   const [err, setErr] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EBEvent | null>(null);
   const [shareSuccess, setShareSuccess] = useState<string | null>(null);
+  const [selectedItineraryId, setSelectedItineraryId] = useState<string>('');
 
   // Fetch user's itineraries to check which events are already added
   const { data: itineraries = [] } = useQuery({
@@ -61,8 +62,23 @@ export default function EventSearchPage() {
     enabled: isAuthenticated,
   });
 
-  const currentItinerary = itineraries[0] || null;
-  const itineraryEventIds = currentItinerary?.events.map(e => e.id) || [];
+  // Select saved itinerary or first itinerary by default
+  useEffect(() => {
+    if (itineraries.length > 0 && !selectedItineraryId) {
+      const savedId = localStorage.getItem('selectedItineraryId');
+      const itineraryExists = itineraries.find(it => it._id === savedId);
+      if (savedId && itineraryExists) {
+        setSelectedItineraryId(savedId);
+      } else {
+        setSelectedItineraryId(itineraries[0]._id);
+      }
+    }
+  }, [itineraries, selectedItineraryId]);
+
+  const currentItinerary = itineraries.find(it => it._id === selectedItineraryId) || null;
+
+  // Get all event IDs from all itineraries to show which events are already saved
+  const allItineraryEventIds = itineraries.flatMap(it => it.events.map(e => e.id));
 
   // Mutation to add event to itinerary
   const addEventMutation = useMutation({
@@ -157,6 +173,11 @@ export default function EventSearchPage() {
       return;
     }
 
+    if (!selectedItineraryId && itineraries.length > 0) {
+      alert('Please select an itinerary first');
+      return;
+    }
+
     const newEvent: Event = {
       id: event.id,
       name: event.name?.text || 'Event',
@@ -168,19 +189,22 @@ export default function EventSearchPage() {
 
     try {
       // If no itinerary exists, create one first
-      if (!currentItinerary) {
-        await createItineraryMutation.mutateAsync({
+      if (itineraries.length === 0) {
+        const newItinerary = await createItineraryMutation.mutateAsync({
           name: 'My Itinerary',
           events: [newEvent],
         });
+        setSelectedItineraryId(newItinerary._id);
+        localStorage.setItem('selectedItineraryId', newItinerary._id);
         alert('Itinerary created and event added!');
       } else {
-        // Add event to existing itinerary
+        // Add event to selected itinerary
         await addEventMutation.mutateAsync({
-          itineraryId: currentItinerary._id,
+          itineraryId: selectedItineraryId,
           event: newEvent,
         });
-        alert('Event added to itinerary!');
+        const itineraryName = itineraries.find(it => it._id === selectedItineraryId)?.name || 'itinerary';
+        alert(`Event added to ${itineraryName}!`);
       }
     } catch (error: unknown) {
       console.error('Error adding event to itinerary:', error);
@@ -204,6 +228,29 @@ export default function EventSearchPage() {
         {shareSuccess && (
           <div className="mb-4 bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-200 px-4 py-3 rounded">
             Link copied to clipboard! {shareSuccess}
+          </div>
+        )}
+
+        {/* Itinerary Selector */}
+        {isAuthenticated && itineraries.length > 0 && (
+          <div className="mb-4 bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Save events to:
+            </label>
+            <select
+              value={selectedItineraryId}
+              onChange={(e) => {
+                setSelectedItineraryId(e.target.value);
+                localStorage.setItem('selectedItineraryId', e.target.value);
+              }}
+              className="w-full md:w-auto px-3 py-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+            >
+              {itineraries.map((itinerary) => (
+                <option key={itinerary._id} value={itinerary._id}>
+                  {itinerary.name} ({itinerary.events.length} events)
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -310,13 +357,13 @@ export default function EventSearchPage() {
                   </button>
                   <button
                     onClick={() => handleAddToItinerary(ev)}
-                    disabled={itineraryEventIds.includes(ev.id) || addEventMutation.isPending || createItineraryMutation.isPending}
+                    disabled={allItineraryEventIds.includes(ev.id) || addEventMutation.isPending || createItineraryMutation.isPending}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                   >
                     {addEventMutation.isPending || createItineraryMutation.isPending
                       ? 'Adding...'
-                      : itineraryEventIds.includes(ev.id)
-                      ? 'In Itinerary'
+                      : allItineraryEventIds.includes(ev.id)
+                      ? 'Already Saved'
                       : 'Add to Itinerary'}
                   </button>
                 </div>

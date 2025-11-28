@@ -20,7 +20,8 @@ export default function Home() {
             WorldExplorer
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl">
-            Explore the world with our powerful platform. Connect, discover, and share your adventures.
+            Search events, build custom itineraries, and share your adventures with friends.
+            All in one simple dashboard.
           </p>
         </div>
 
@@ -52,10 +53,10 @@ export default function Home() {
             Get Started
           </Link>
           <Link
-            href="/about"
+            href="/countries"
             className="px-8 py-3 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700"
           >
-            Learn More
+            Browse Countries
           </Link>
         </div>
 
@@ -75,10 +76,10 @@ export default function Home() {
             </p>
           </div>
           <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md">
-            <div className="text-3xl mb-3">📸</div>
-            <h3 className="text-xl font-bold mb-2 text-gray-800 dark:text-gray-200">Share</h3>
+            <div className="text-3xl mb-3">📝</div>
+            <h3 className="text-xl font-bold mb-2 text-gray-800 dark:text-gray-200">Plan</h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Capture and share your adventures with the community
+              Turn ideas into structured itineraries with events
             </p>
           </div>
         </div>

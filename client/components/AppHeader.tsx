@@ -15,7 +15,7 @@ const navItems = [
 export default function AppHeader() {
   const pathname = usePathname();
 
-  if (pathname === '/' || pathname === '/dashboard') {
+  if (pathname === '/' || pathname === '/dashboard' || pathname === '/login' || pathname === '/register') {
     return null;
   }
 
