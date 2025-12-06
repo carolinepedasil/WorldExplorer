@@ -2,9 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { shareApi, calendarApi, itineraryApi, type Event, type Itinerary } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+// Dynamic import for MapView to avoid SSR issues with Leaflet
+const MapView = dynamic(() => import('@/components/MapView'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[600px] bg-gray-200 dark:bg-gray-700 rounded-xl flex items-center justify-center">
+      <div className="text-gray-600 dark:text-gray-300">Loading map...</div>
+    </div>
+  ),
+});
 
 export default function ItineraryPage() {
   const router = useRouter();
@@ -18,6 +29,7 @@ export default function ItineraryPage() {
   const [newItineraryDescription, setNewItineraryDescription] = useState('');
   const [editingItineraryId, setEditingItineraryId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const queryClient = useQueryClient();
 
   // Fetch all itineraries for the user
@@ -377,7 +389,33 @@ export default function ItineraryPage() {
           </div>
         )}
 
-        {/* Events Grid */}
+        {/* View Toggle Buttons */}
+        {currentItinerary && events.length > 0 && (
+          <div className="mb-4 flex gap-2">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              List View
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                viewMode === 'map'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              Map View
+            </button>
+          </div>
+        )}
+
+        {/* Events Display */}
         {!currentItinerary && itineraries.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">
             <p className="text-gray-600 dark:text-gray-400 mb-4">You don&apos;t have any itineraries yet</p>
@@ -398,6 +436,8 @@ export default function ItineraryPage() {
               Search Events
             </button>
           </div>
+        ) : viewMode === 'map' ? (
+          <MapView events={events} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {events.map((ev) => (
